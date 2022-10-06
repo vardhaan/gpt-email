@@ -35,4 +35,9 @@ def test_history():
 	messages = gmail.get_messages_history()
 	print(messages)
 
-test_history()
+def tester():
+	gmail = gmail_api.Gmail_Wrapper()
+	r = gmail.get_message_data('183ac06a271b7549')
+	print(r)
+
+tester()

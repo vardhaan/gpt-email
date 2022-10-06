@@ -41,5 +41,17 @@ class GPT_Wrapper:
 		)
 		return (response['choices'][0]['text'], response['usage'])
 
+	def send_completion_request(self, completion_prompt, model_choice="text-davinci-002",
+		model_temperature=1, max_output_tokens=500):
+		response = openai.Completion.create(
+			model=model_choice,
+			prompt=completion_prompt,
+			max_tokens=max_output_tokens,
+			temperature=model_temperature
+		)
+		return (response['choices'][0]['text'], response['usage'])
+
+
+
 	def num_tokens_in_string(self, input_string):
 		return len(self.tokenizer(input_string)['input_ids'])

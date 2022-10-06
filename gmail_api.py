@@ -62,6 +62,7 @@ class Gmail_Wrapper:
 		except HttpError as error:
 			print(f'Error: {error}')
 
+	#Will return None if errors (including trying to get data on a deleted email)
 	def get_message_data(self, message_id):
 		try:
 			results = self.service.users().messages().get(userId='me', id=message_id).execute()
@@ -103,11 +104,13 @@ class Gmail_Wrapper:
 		for message in history_data:
 			message_id = message['messages'][0]['id']
 			message_data = self.get_message_data(message_id)
+			if message_data is None:
+				continue
 			subject = self.get_subject(message_data)
 			body = self.get_body(message_data)
 			messages.append((subject, body))
 			history_id = self.get_history_id(message_data)
-		self.update_history_id(history_id)
+		#self.update_history_id(history_id)
 		return messages
 
 	def get_history_id(self, gmail_response):
@@ -126,7 +129,9 @@ class Gmail_Wrapper:
 			self.update_history_id(0)
 			return 0
 
-	def update_history_id(self, new_history_id):
+	def update_history_id(self, new_history_id=None):
+		if new_history_id is None:
+			new_history_id = self.history_id
 		file = open('history_id.json', 'w')
 		data = dict()
 		data['history_id'] = new_history_id
@@ -136,12 +141,15 @@ class Gmail_Wrapper:
 
 
 	def get_subject(self, gmail_response):
+		print(gmail_response)
 		headers = gmail_response['payload']['headers']
 		subject = [header['value'] for header in headers if header['name']=="Subject"]
 		return subject[0]
 
 
 	def get_body(self, gmail_response):
+		#if the email is only plain text, then it will not have the parts section.
+		#if the email has multiple parts, then the first 'body' in 'payload' doesn't have 'data'.
 		if "parts" in gmail_response['payload']:
 			body_string_b64 = gmail_response['payload']['parts'][0]['body']['data']
 		else:
