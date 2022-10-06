@@ -14,6 +14,10 @@ from googleapiclient.errors import HttpError
 
 from email.message import EmailMessage
 
+'''
+This class iterates in reverse chronological order: oldest messages first.
+'''
+
 class Gmail_Wrapper:
 
 	def __init__(self):
@@ -21,12 +25,17 @@ class Gmail_Wrapper:
 		self.creds = self.authenticate()
 		self.service = None
 		self.email_address = None
+
 		try:
 			self.service = build('gmail', 'v1', credentials=self.creds)
 			profile = self.service.users().getProfile(userId='me').execute()
 			self.email_address = profile['emailAddress']
 		except HttpError as error:
 			print(f'Error: {error}')
+		self.history_id = self.load_history_id()
+		if self.history_id == 0:
+			self.history_id = self.get_history_id(self.get_latest_message())
+			self.update_history_id(self.history_id)
 
 	def authenticate(self):
 		#Boiler plate code provided by Gmail docs
@@ -56,17 +65,74 @@ class Gmail_Wrapper:
 	def get_message_data(self, message_id):
 		try:
 			results = self.service.users().messages().get(userId='me', id=message_id).execute()
-			subject = self.get_subject(results)
-			utf_body_string = self.get_body(results)
-			return (subject, utf_body_string)
+			return results
 		except Exception as e:
 			print(e)
 			return None
 
 	def get_messages(self, num_messages=5):
 		message_ids_list = self.get_message_ids(num_messages)
-		print(message_ids_list)
-		return [self.get_message_data(message_id['id']) for message_id in message_ids_list]
+		messages = []
+		for message_id in message_ids_list:
+			message_data = self.get_message_data(message_id['id'])
+			subject = self.get_subject(message_data)
+			body = self.get_body(message_data)
+			messages.append((subject, body))
+		return messages
+
+
+	def get_latest_message(self):
+		message_id = self.get_message_ids(1)[0]['id']
+		print(message_id)
+		return self.get_message_data(message_id)
+
+		
+	#History data is given in reverse chronological order (oldest first, lowest history id first) by the API.
+	def get_history_data(self, history_id):
+		results = self.service.users().history().list(userId='me', startHistoryId=history_id, 
+			historyTypes = ['messageAdded']).execute()
+		return results['history']
+
+	#This method will return results that contain deleted emails! There may be a way to avoid that
+	#via checking labels. TODO.
+	def get_messages_history(self, history_id=None):
+		if history_id is None:
+			history_id = self.history_id
+		history_data = self.get_history_data(history_id)
+		messages = []
+		for message in history_data:
+			message_id = message['messages'][0]['id']
+			message_data = self.get_message_data(message_id)
+			subject = self.get_subject(message_data)
+			body = self.get_body(message_data)
+			messages.append((subject, body))
+			history_id = self.get_history_id(message_data)
+		self.update_history_id(history_id)
+		return messages
+
+	def get_history_id(self, gmail_response):
+		return gmail_response['historyId']
+
+	def load_history_id(self):
+		#Load id from json file if exists.
+		#If not, create file and then set to placeholder value of 0. This placeholder will be updated when 
+		#new messages are fetched.
+		if os.path.exists('history_id.json'):
+			file = open('history_id.json')
+			data = json.load(file)
+			file.close()
+			return data['history_id']
+		else:
+			self.update_history_id(0)
+			return 0
+
+	def update_history_id(self, new_history_id):
+		file = open('history_id.json', 'w')
+		data = dict()
+		data['history_id'] = new_history_id
+		json_data = json.dumps(data)
+		file.write(json_data)
+		file.close()
 
 
 	def get_subject(self, gmail_response):
@@ -76,7 +142,10 @@ class Gmail_Wrapper:
 
 
 	def get_body(self, gmail_response):
-		body_string_b64 = gmail_response['payload']['parts'][0]['body']['data']
+		if "parts" in gmail_response['payload']:
+			body_string_b64 = gmail_response['payload']['parts'][0]['body']['data']
+		else:
+			body_string_b64 = gmail_response['payload']['body']['data']
 		#Tt seems like the below line is unnecessary. At least, in simple plain-text cases.
 		#It simply returns the same thing as the body_string_b64 (perhaps Gmail provides it already encoded)
 		#TODO: double check on harder cases and close this out.
@@ -92,107 +161,14 @@ class Gmail_Wrapper:
 			message['To'] = self.format_recipients(email_recipients)
 			message['From'] = self.email_address
 			message['Subject'] = email_subject
-			print(message)
 			encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 			created_message = {
 				'raw': encoded_message
 			}
-			print(created_message['raw'])
 			sent_message = self.service.users().messages().send(userId='me', body=created_message).execute()
-			print(sent_message)
 		except HttpError as error:
 			print(f'Error: {error}')
 
 	def format_recipients(self, email_recipients_list):
 		return ", ".join(email_recipients_list)
 
-
-
-
-'''
-def get_messages_list(credentials, num_messages=5):
-	try:
-		service = build('gmail', 'v1', credentials=credentials)
-		results = service.users().messages().list(userId='me', maxResults=num_messages).execute()
-		messages = results.get('messages', [])
-		return messages
-	except HttpError as error:
-		print(f'hey {error}')
-
-
-def get_message_data(message_id, credentials):
-	subject = ""
-	body_string_b64 = ""
-	try:
-		service = build('gmail', 'v1', credentials=credentials)
-		results = service.users().messages().get(userId='me', id=message_id).execute()
-		subject = get_subject(results)
-		utf_body_string = get_body(results)
-		return (subject, utf_body_string)
-	except Exception as e:
-		print(e)
-		return None
-
-def get_subject(gmail_response):
-	headers = gmail_response['payload']['headers']
-	subject = [header['value'] for header in headers if header['name']=="Subject"]
-	return subject[0]
-
-
-def get_body(gmail_response):
-	body_string_b64 = gmail_response['payload']['parts'][0]['body']['data']
-	#Tt seems like the below line is unnecessary. At least, in simple plain-text cases.
-	#It simply returns the same thing as the body_string_b64 (perhaps Gmail provides it already encoded)
-	#TODO: double check on harder cases and close this out.
-	#encoded_string = body_string_b64.encode('UTF8') 
-	b64_urlsafe_decoded = base64.urlsafe_b64decode(body_string_b64)
-	return b64_urlsafe_decoded.decode('UTF-8')
-'''
-
-def main():
-	gmail = Gmail_Wrapper()
-	messages = gmail.get_messages()
-	for message in messages:
-		print(message[0])
-	print(messages[0][1])
-	'''
-	creds = authenticate()
-	messages = get_messages_list(creds)
-	messages_arr = []
-	for message in messages:
-		info_tuple = get_message_data(message['id'], creds)
-		if info_tuple is not None:
-			messages_arr.append(info_tuple)
-	return messages_arr'''
-
-
-def test_decoding_option():
-	tough_case_id = "183619badc73cf46"
-	easy_case_id = "183619643e11d0a4"
-	another_case = "183617ba5cbb208c"
-	creds = authenticate()
-	subject, body = get_message_data(easy_case_id, creds)
-	print(subject, body)
-
-
-def test_get_recent_messages():
-	creds = authenticate()
-	messages = get_messages_list(creds, num_messages=5)
-	for message in messages:
-		print(message['id'])
-
-
-def test_send_email():
-	gmail = Gmail_Wrapper()
-	gmail.send_email("subj", "bod", ["jumpstart.onboard@gmail.com"])
-
-
-def test_format_recipients():
-	gmail = Gmail_Wrapper()
-	recips = ["a@yahoo.com", "b@gmail.com", "c@lycos.com"]
-	formatted = gmail.format_recipients(recips)
-	print(formatted)
-
-
-
-test_send_email()
