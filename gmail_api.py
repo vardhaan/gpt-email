@@ -12,17 +12,19 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from email.message import EmailMessage
 
 class Gmail_Wrapper:
 
 	def __init__(self):
-		self.SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+		self.SCOPES = ['https://mail.google.com/']
 		self.creds = self.authenticate()
 		self.service = None
+		self.email_address = None
 		try:
-			print("gets here")
 			self.service = build('gmail', 'v1', credentials=self.creds)
-			print(type(self.service))
+			profile = self.service.users().getProfile(userId='me').execute()
+			self.email_address = profile['emailAddress']
 		except HttpError as error:
 			print(f'Error: {error}')
 
@@ -47,7 +49,6 @@ class Gmail_Wrapper:
 		try:
 			results = self.service.users().messages().list(userId='me', maxResults=num_messages).execute()
 			messages = results.get('messages', [])
-			print(messages)
 			return messages
 		except HttpError as error:
 			print(f'Error: {error}')
@@ -64,6 +65,7 @@ class Gmail_Wrapper:
 
 	def get_messages(self, num_messages=5):
 		message_ids_list = self.get_message_ids(num_messages)
+		print(message_ids_list)
 		return [self.get_message_data(message_id['id']) for message_id in message_ids_list]
 
 
@@ -81,6 +83,31 @@ class Gmail_Wrapper:
 		#encoded_string = body_string_b64.encode('UTF8') 
 		b64_urlsafe_decoded = base64.urlsafe_b64decode(body_string_b64)
 		return b64_urlsafe_decoded.decode('UTF-8')
+
+	#Expects email_recipients as an array of strings.
+	def send_email(self, email_subject, email_body, email_recipients):
+		try:
+			message = EmailMessage()
+			message.set_content(email_body)
+			message['To'] = self.format_recipients(email_recipients)
+			message['From'] = self.email_address
+			message['Subject'] = email_subject
+			print(message)
+			encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+			created_message = {
+				'raw': encoded_message
+			}
+			print(created_message['raw'])
+			sent_message = self.service.users().messages().send(userId='me', body=created_message).execute()
+			print(sent_message)
+		except HttpError as error:
+			print(f'Error: {error}')
+
+	def format_recipients(self, email_recipients_list):
+		return ", ".join(email_recipients_list)
+
+
+
 
 '''
 def get_messages_list(credentials, num_messages=5):
@@ -127,6 +154,7 @@ def main():
 	messages = gmail.get_messages()
 	for message in messages:
 		print(message[0])
+	print(messages[0][1])
 	'''
 	creds = authenticate()
 	messages = get_messages_list(creds)
@@ -153,7 +181,18 @@ def test_get_recent_messages():
 	for message in messages:
 		print(message['id'])
 
-main()
+
+def test_send_email():
+	gmail = Gmail_Wrapper()
+	gmail.send_email("subj", "bod", ["jumpstart.onboard@gmail.com"])
+
+
+def test_format_recipients():
+	gmail = Gmail_Wrapper()
+	recips = ["a@yahoo.com", "b@gmail.com", "c@lycos.com"]
+	formatted = gmail.format_recipients(recips)
+	print(formatted)
 
 
 
+test_send_email()

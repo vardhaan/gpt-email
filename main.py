@@ -1,14 +1,18 @@
 from gmail_api import *
 from gpt import *
 
-messages = main()
+
+
+
+gmail = Gmail_Wrapper()
+gpt = GPT_Wrapper()
+
+messages = gmail.get_messages()
 for message in messages:
 	subject, body = message
-	print("token func called")
-	num_tokens_body = num_tokens_for_string(body)
+	num_tokens_body = gpt.num_tokens_in_string(body)
 	if num_tokens_body > 3000: 
-		#print("too big!")
 		continue
-	#print(body)
-	prioritization, usage = prioritize_email(subject, body)
-	#print(subject, prioritization, usage)
+	prioritization, usage = gpt.prioritize_email(subject, body)
+	print(subject, prioritization)
+	break
