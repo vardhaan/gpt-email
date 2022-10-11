@@ -37,6 +37,7 @@ class Gmail_Wrapper:
 			self.history_id = self.get_history_id(self.get_latest_message())
 			self.update_history_id(self.history_id)
 
+
 	def close(self):
 		self.update_history_id()
 
@@ -44,16 +45,16 @@ class Gmail_Wrapper:
 		#Boiler plate code provided by Gmail docs
 		creds = None
 
-		if os.path.exists('token.json'):
-			creds = Credentials.from_authorized_user_file('token.json', self.SCOPES)
+		if os.path.exists('auth/token.json'):
+			creds = Credentials.from_authorized_user_file('auth/token.json', self.SCOPES)
 
 		if not creds or not creds.valid:
 			if creds and creds.expired and creds.refresh_token:
 				creds.refresh(Request())
 			else:
-				flow = InstalledAppFlow.from_client_secrets_file('credentials.json', self.SCOPES)
+				flow = InstalledAppFlow.from_client_secrets_file('auth/credentials.json', self.SCOPES)
 				creds = flow.run_local_server(port=0)
-			with open('token.json', 'w') as token:
+			with open('auth/token.json', 'w') as token:
 				token.write(creds.to_json())
 		return creds
 
@@ -123,8 +124,8 @@ class Gmail_Wrapper:
 		#Load id from json file if exists.
 		#If not, create file and then set to placeholder value of 0. This placeholder will be updated when 
 		#new messages are fetched.
-		if os.path.exists('history_id.json'):
-			file = open('history_id.json')
+		if os.path.exists('src/history_id.json'):
+			file = open('src/history_id.json')
 			data = json.load(file)
 			file.close()
 			return data['history_id']
@@ -135,7 +136,7 @@ class Gmail_Wrapper:
 	def update_history_id(self, new_history_id=None):
 		if new_history_id is None:
 			new_history_id = self.history_id
-		file = open('history_id.json', 'w')
+		file = open('src/history_id.json', 'w')
 		data = dict()
 		data['history_id'] = new_history_id
 		json_data = json.dumps(data)
