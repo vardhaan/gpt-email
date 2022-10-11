@@ -1,0 +1,2 @@
+A cron job that prioritizes and summarizes your emails for you.
+Imagine you had an assistant that handled all your email and only told you the information that was actually important to you. This is that.
