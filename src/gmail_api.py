@@ -37,6 +37,9 @@ class Gmail_Wrapper:
 			self.history_id = self.get_history_id(self.get_latest_message())
 			self.update_history_id(self.history_id)
 
+	def close(self):
+		self.update_history_id()
+
 	def authenticate(self):
 		#Boiler plate code provided by Gmail docs
 		creds = None

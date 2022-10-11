@@ -1,0 +1,6 @@
+Email subject: {}
+Email body: {}
+
+__
+
+I am a busy person. Summarize this email (be succinct). Write your answer in as few bullet points as needed:
