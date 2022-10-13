@@ -11,7 +11,7 @@ class GPT_Wrapper:
 		logging.set_verbosity_error()
 
 	def send_completion_request(self, completion_prompt, model_choice="text-davinci-002",
-		model_temperature=1, max_output_tokens=100):
+		model_temperature=1, max_output_tokens=200):
 		response = openai.Completion.create(
 			model=model_choice,
 			prompt=completion_prompt,

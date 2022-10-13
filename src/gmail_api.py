@@ -98,9 +98,12 @@ class Gmail_Wrapper:
 			historyTypes = ['messageAdded']).execute()
 		return results['history']
 
-	#This method will return results that contain deleted emails! There may be a way to avoid that
-	#via checking labels. TODO.
-	def get_messages_history(self, history_id=None):
+	
+	def get_messages_history(self, history_id=None) -> list[tuple[str, str]]:
+		'''This method returns unhandled messages from the inbox. 
+		The optional input is a history id: all emails received after this history id will be returned.
+		The output is a list of tuples. Each tuple contains two strings: (email subject, email body). The tuples are in reverse chronological order.
+		Caution: unhandled emails that the user deleted will be included in the output.'''
 		if history_id is None:
 			history_id = self.history_id
 		history_data = self.get_history_data(history_id)
@@ -166,10 +169,14 @@ class Gmail_Wrapper:
 		return b64_urlsafe_decoded.decode('UTF-8')
 
 	#Expects email_recipients as an array of strings.
-	def send_email(self, email_subject, email_body, email_recipients):
+	def send_email(self, email_subject, email_body, email_recipients, html=False):
 		try:
 			message = EmailMessage()
-			message.set_content(email_body)
+			if html:
+				message.add_header('Content-Type', 'text/html')
+				message.set_payload(email_body)
+			else:
+				message.set_content(email_body)
 			message['To'] = self.format_recipients(email_recipients)
 			message['From'] = self.email_address
 			message['Subject'] = email_subject

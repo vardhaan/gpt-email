@@ -1,0 +1,7 @@
+{
+    "prioritization_buckets": {
+        "must_read": 70,
+        "nice_to_know": 40,
+        "unimportant": 0
+    }
+}

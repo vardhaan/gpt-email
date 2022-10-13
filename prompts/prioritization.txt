@@ -4,15 +4,13 @@ Email body: {}
 __
 
 Answer in the following format:
-<
+[
 Question 1. Does it require Mike to take action?
 Answer 1. <answer to question 1, "Yes" or "No">
 Question 2. In how many days (0, 1, 2, etc.) is it due?
 Answer 2. <answer to question 2, Integer between 0 and 100 or "not due" if not applicable>
 Question 3. Will this information be good to know?
 Answer 3. <answer to question 3, "Yes" or "No">
-Question 4. Is the sender important to Mike?
-Answer 4. <answer to question 4, "Yes" or "No">
 Final Question. Based on the above, how much attention should Mike pay to this email?
-Final Answer. <answer to question 3, Integer between 0 and 100>
->
+Final Answer. <answer to Final Question, Integer between 0 and 100>
+]

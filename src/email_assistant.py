@@ -8,27 +8,35 @@ class EmailHandler():
 		self.prompt = prompt_file.read()
 		prompt_file.close()
 
-	def handle_email(self, subject, body, gpt_requester, cheap=False):
+	def handle_email(self, subject, body, gpt_requester, cheap=False, temperature=0):
 		model = "text-davinci-002"
 		if cheap:
 			model="text-curie-001"
 		full_prompt = self.prompt.format(subject, body)
-		results = gpt_requester(full_prompt, model_choice=model)
+		results = gpt_requester(full_prompt, model_choice=model, model_temperature=temperature)
 		return results[0]
 
 
-'''
-This class takes in email subjects and bodies and outputs a prioritization (in list format) for them.
-How we will prioritize:
-- Ask GPT-3 the priority (this may require handling incorrect response formats from GPT-3)
-- Sort according to that order
-'''
+
 class Prioritizer(EmailHandler):
+	'''This class takes in email subjects and bodies, prioritizes each of them, and sorts them in descending order of priority.
+	It uses GPT-3 to prioritize each email. The constructor takes in an optional text file containing a prompt used to prioritize each email.'''
+	
 	def __init__(self, prompt_file='prioritization.txt'):
 		self.priority_regex = "Final Answer." #Depends on prompt being used. Could I put this in the prompt file too?
 		super().__init__(prompt_file)
 
 	def prioritize_emails(self, email_batch, gpt_requester):
+		'''This method takes in a list of (subject, body) tuples representing emails, prioritizes each of them, and returns a sorted list of the emails in 
+		descending order of priority.
+
+		Inputs:
+		- email_batch: List of (subject, body) tuples of type (str, str).
+		- gpt_requester: A callable that will return a priority score for each email.
+		
+		Outputs:
+		- priority_ordered_emails: List of (subject, body, priority) tuples of type (str, str, int) sorted in descending order of priority.
+		'''
 		priority_ordered_emails = []
 		for email in email_batch:
 			subject = email[0]
@@ -40,15 +48,6 @@ class Prioritizer(EmailHandler):
 		priority_ordered_emails.sort(key=itemgetter(2), reverse=True)
 		return priority_ordered_emails
 
-	'''
-	def prioritize_email(self, subject, body, gpt_requester):
-		return random.randint(0, 100)
-		formatted_email = self.email_format.format(subject, body)
-		full_prompt = formatted_email + "\n\n" + self.prioritization_question
-		results = gpt_requester(full_prompt)
-		priority = find_priority(results[0])
-		return priority
-	'''
 
 	def find_priority_in_response(self, prioritization_response):
 		priority = prioritization_response.split(self.priority_regex)[-1]
@@ -80,14 +79,3 @@ class Summarizer(EmailHandler):
 		summary['super_summary'] = super_summary
 		return summary
 
-	'''
-	def summarize_email(self, subject, body, gpt_requester, cheap):
-		model = "text-davinci-002"
-		if cheap:
-			model="text-curie-001"
-		formatted_email = self.email_format.format(subject, body)
-		full_prompt = formatted_email + "\n" + self.summarization_question
-		results = gpt_requester(full_prompt, model_choice=model)
-		email_summary = results[0]
-		return email_summary
-	'''
