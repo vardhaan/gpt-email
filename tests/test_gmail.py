@@ -1,4 +1,9 @@
-import gmail_api
+from cgitb import html
+import unittest
+from src.gmail_api import *
+
+
+'''
 
 
 
@@ -39,5 +44,32 @@ def tester():
 	gmail = gmail_api.Gmail_Wrapper()
 	r = gmail.get_message_data('183ac06a271b7549')
 	print(r)
+'''
 
-tester()
+class Test_Gmail(unittest.TestCase):
+
+	def setUp(self):
+		self.gmail = Gmail_Wrapper()
+
+	def test_send_html(self):
+
+		test_html_string = """<h1>TL;DR</h1>
+			<ul>
+			<li><a href="www.google.com">Email subject</a>
+				<ul>
+					<li> Summary point 1</li>
+					<li> Summary point 2</li>
+				</ul>
+			</li>
+			</ul>"""
+		sent_email_id = self.gmail.send_email("Test HTML email", test_html_string, ['jumpstart.onboard@gmail.com'], html=True)
+		self.assertTrue((sent_email_id is not None))
+		
+
+if __name__=='__main__':
+	unittest.main()
+
+
+
+
+

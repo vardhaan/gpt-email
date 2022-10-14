@@ -46,12 +46,15 @@ class Gmail_Wrapper:
 		creds = None
 
 		if os.path.exists('auth/token.json'):
+			print("should go here")
 			creds = Credentials.from_authorized_user_file('auth/token.json', self.SCOPES)
 
 		if not creds or not creds.valid:
 			if creds and creds.expired and creds.refresh_token:
+				print(1)
 				creds.refresh(Request())
 			else:
+				print(2)
 				flow = InstalledAppFlow.from_client_secrets_file('auth/credentials.json', self.SCOPES)
 				creds = flow.run_local_server(port=0)
 			with open('auth/token.json', 'w') as token:
@@ -185,6 +188,7 @@ class Gmail_Wrapper:
 				'raw': encoded_message
 			}
 			sent_message = self.service.users().messages().send(userId='me', body=created_message).execute()
+			return sent_message['id']
 		except HttpError as error:
 			print(f'Error: {error}')
 
